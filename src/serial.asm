@@ -252,7 +252,7 @@ UART0_serial_PUTBUF:
 			JR	Z, UART_serial_NE		; If not, then skip
 
 			TST	02h						; If hardware flow control enabled then
-			JR	NZ, UART0_serial_PUTBUF_3 ; Go check it for each character
+			CALL	NZ, UART0_wait_CTS	; Wait for clear to send signal
 
 UART0_serial_PUTBUF_2:
 			LD	A, 	(HL)				; Get a character
@@ -265,17 +265,6 @@ $$:			CALL	UART0_serial_TX		; Send the character
 			JR	NZ, UART0_serial_PUTBUF_2 ; Go back if more to send
 			RET
 
-UART0_serial_PUTBUF_3:
-			CALL	NZ, UART0_wait_CTS	; Wait for clear to send signal
-			LD	A, 	(HL)				; Get a character
-$$:			CALL	UART0_serial_TX		; Send the character
-			JR	NC, $B					; Repeat until sent
-			INC 	HL 					; Increment the buffer pointer
-			DEC	BC						; Reduce byte count
-			LD	A, B					; Part of BC
-			OR	A, C					; Other part of BC
-			JR	NZ, UART0_serial_PUTBUF_3 ; Go back if more to send
-			RET
 ;
 ; The C wrappers
 ;

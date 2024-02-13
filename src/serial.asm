@@ -2,7 +2,7 @@
 ; Title:	AGON MOS - UART code
 ; Author:	Dean Belfield
 ; Created:	11/07/2022
-; Last Updated:	29/03/2023
+; Last Updated:	13/02/2024
 ;
 ; Modinfo:
 ; 27/07/2022:	Reverted serial_TX back to use RET, not RET.L and increased timeout
@@ -10,6 +10,7 @@
 ; 22/03/2023:	Added serial_PUTCH, moved putch and getch from uart.c
 ; 23/03/2023:	Renamed serial_RX_WAIT to seral_GETCH
 ; 29/03/2023:	Added support for UART1
+; 13/02/2024:	CW Added UART0_serial_PUTBUF function
 
 			INCLUDE	"macros.inc"
 			INCLUDE	"equs.inc"
@@ -23,6 +24,7 @@
 			XDEF	UART0_serial_RX
 			XDEF	UART0_serial_GETCH
 			XDEF	UART0_serial_PUTCH 
+			XDEF	UART0_serial_PUTBUF
 
 			XDEF	UART1_serial_TX
 			XDEF	UART1_serial_RX
@@ -234,6 +236,34 @@ $$:			CALL	UART1_serial_TX			; Send the character
 UART_serial_NE:		POP	AF				; Tidy up the stack
 			OR	A 				; Clear the carry flag
 			RET
+
+; Write multiple characters to UART0 (blocking)
+;
+; Parameters:
+; - HLU: Pointer to characters to write out
+; - BC:  Number of characters to write out
+; Returns:
+; - F: C if written
+; - F: NC if UART not enabled
+;
+UART0_serial_PUTBUF:
+			LD	A, (_serialFlags)		; Get the serial flags
+			TST	01h						; Check UART is enabled
+			JR	Z, UART_serial_NE		; If not, then skip
+
+			TST	02h						; If hardware flow control enabled then
+			CALL	NZ, UART0_wait_CTS	; Wait for clear to send signal
+UART0_serial_PUTBUF_2:
+			LD	A, 	(HL)				; Get a character
+$$:			CALL	UART0_serial_TX		; Send the character
+			JR	NC, $B					; Repeat until sent
+			INC 	HL 					; Increment the buffer pointer
+			DEC	BC						; Reduce byte count
+			LD	A, B					; Part of BC
+			OR	A, C					; Other part of BC
+			JR	NZ, UART0_serial_PUTBUF_2 ; Go back if more to send
+			RET
+
 ;
 ; The C wrappers
 ;

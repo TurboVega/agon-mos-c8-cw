@@ -3,7 +3,7 @@
 ; Author:	Copyright (C) 2005 by ZiLOG, Inc.  All Rights Reserved.
 ; Modified By:	Dean Belfield
 ; Created:	10/07/2022
-; Last Updated:	29/03/2023
+; Last Updated:	13/02/2024
 ;
 ; Modinfo:
 ; 11/07/2022:	Added RST_10 code - TX
@@ -15,6 +15,7 @@
 ; 17/03/2023:	Added RST_18 code
 ; 22/03/2023:	Moved putch to serial.asm, renamed serial_PUTCH
 ; 29/03/2023:	Added support for UART1
+; 13/02/2024:	Use UART0_serial_PUTBUF for RST 18
 
 			INCLUDE	"../src/macros.inc"
 			INCLUDE	"../src/equs.inc"
@@ -36,6 +37,7 @@
 			
 			XREF	mos_api
 			XREF	UART0_serial_PUTCH 
+			XREF	UART0_serial_PUTBUF
 			XREF	SET_AHL24
 
 NVECTORS 		EQU 48			; Number of interrupt vectors
@@ -135,13 +137,8 @@ _rst_18_handler:	LD	E, A 			; Preserve the delimiter
 ;
 ; Standard loop mode
 ;
-_rst_18_handler_0:	LD 	A, (HL)			; Fetch the character
-			CALL	UART0_serial_PUTCH	; Output
-			INC 	HL 			; Increment the buffer pointer
-			DEC	BC 			; Decrement the loop counter
-			LD	A, B 			; Is it 0?
-			OR 	C 
-			JR	NZ, _rst_18_handler_0	; No, so loop
+_rst_18_handler_0:
+			CALL	UART0_serial_PUTBUF	; Output
 			RET.L
 ;
 ; Delimited mode
